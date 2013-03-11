@@ -5,194 +5,17 @@ import pygtk
 pygtk.require('2.0')
 import gtk
 import os
-from time import time
+import time
 from math import floor
 gtk.gdk.threads_init()
 import gobject
-
-import urlparse
-
 import pycurl
 import argparse
-
-import string,cgi,time
+import cStringIO
 from os import curdir, sep
-from BaseHTTPServer import BaseHTTPRequestHandler, HTTPServer
-#import pri
+from handler import MyHandler
+from BaseHTTPServer import HTTPServer
 
-class MyHandler(BaseHTTPRequestHandler):
-
-    tealist = []
-    userlist = []
-    state = "serveroff"
-
-    def do_GET(self):
-        try:
-            if self.path.endswith(".tea"):   #our dynamic content
-                self.send_response(200)
-                self.send_header('Content-type',	'text/html')
-                self.end_headers()
-
-                self.wfile.write("hey, today is the " + str(time.localtime()[7]))
-                self.wfile.write(" day in the year " + str(time.localtime()[0]))
-                self.wfile.write("\n<br>\nThere's always time for a nice cup of tea.")
-                return
-
-            if self.path.endswith(".tea?SigningIn"):   #
-                self.send_response(200)
-                self.send_header('Content-type',	'text/html')
-                self.end_headers()
-
-                self.wfile.write("Signing in " + str(time.localtime()[7]))
-                self.wfile.write("Signing in at" + str(time.localtime()[7]))
-                self.wfile.write(" day in the year " + str(time.localtime()[0]))
-                self.wfile.write("\n<br>\nah go on")
-                return
-                
-            return
-                
-        except IOError:
-            self.send_error(404,'File Not Found: %s' % self.path)
-
-
-    def do_POST(self):
-
-            print "recieved post!"
-            Time_Now = time.time()
-            timelimit=10
-
-            for entry in self.userlist:
-                if entry[1]-Time_Now>timelimit:
-                    self.userlist.remove(entry)
-                    self.tealist.remove(entry)
-                    
-            print "users on system: ", self.userlist
-            print "users who want tea:", self.tealist
-
-            makeTeaNow=False
-            if len(self.tealist)>(len(self.userlist)/2):
-                makeTeaNow=True
-
-            print "maketeanow?", makeTeaNow
-
-        
-            global rootnode
-        #try:
-            ctype, pdict = cgi.parse_header(self.headers.getheader('content-type'))
-            if ctype == 'multipart/form-data':
-                    query=cgi.parse_multipart(self.rfile, pdict)
-                    self.send_response(301)
-
-	            upfilecontent = query.get('upfile')
-	            print "filecontent", upfilecontent[0]
-	            self.wfile.write("<HTML>POST OK.<BR><BR>");
-	            self.wfile.write(upfilecontent[0]);
-	    else:
-
-                print "A user messaged the system:"
-
-                if self.path.endswith(".tea?SigningIn"):   #
-                
-                    print "A user doesn't want tea:"
-                
-                    length = int(self.headers['Content-Length'])
-                    post_data = urlparse.parse_qs(self.rfile.read(length).decode('utf-8'))
-
-                    for key, value in post_data.iteritems():
-                        #print "checking if entry in userlist"
-
-                        if len(self.userlist)>0:
-                            if key=='user':
-                                #print "checking key"
-                                #print "value[0]", value[0], "self.userlist", self.userlist
-                                #print "any(value[0] == x[0] for x in self.userlist)", any(value[0] == x[0] for x in self.userlist)
-                                if not any(value[0] == x[0] for x in self.userlist):
-                                    print "adding new entry to userlist:", [value[0], time.time()]
-                                    newEntry = [value[0],time.time()]
-                                    self.userlist.append(newEntry)
-                                    self.wfile.write("Hello " + str(newEntry))
-                                else:
-                                    #print "modifying entry in userlist:", [value[0], time.time()]
-                                    for entry in self.userlist:
-                                        if key=='user'and entry[0] == value[0]:
-                                            entry[1] = time.time()
-                        else:
-                            print "adding new entry to userlist:", [value[0], time.time()]
-                            #print value[0]
-                            #print time.time()
-                            newEntry = [value[0],time.time()]
-                            self.userlist.append(newEntry)
-                            self.wfile.write("Hello " + str(newEntry))
-                    
-                        print "%s=%s" % (key, value[0])
-
-                        for entry in self.tealist:
-                            print "remove?",entry[0], value[0]
-                            if entry[0] == value[0]:
-                                print "removed an entry from the tea list"
-                                self.tealist.remove(entry)
-
-                    #print "sending response to sign in"
-                    
-                    self.send_header('Content-type',	'text/html')
-                    self.wfile.write("Signing in " + str(time.localtime()[7]))
-                    self.wfile.write("Signing in at" + str(time.localtime()[7]))
-                    self.wfile.write(" day in the year " + str(time.localtime()[0]))
-                    self.wfile.write("\n<br>\nah go on")
-
-                    print "Users: ",self.userlist
-
-                elif self.path.endswith(".tea?IwantTea"):   #
-
-                    print "A user requested tea!"
-                   
-                    self.send_header('Content-type',	'text/html')
-                    #self.end_headers()
-
-                    #print "someone wants tea"
-                    
-                    length = int(self.headers['Content-Length'])
-                    post_data = urlparse.parse_qs(self.rfile.read(length).decode('utf-8'))
-
-                    print "post_data", post_data.iteritems()
-
-                    for key, value in post_data.iteritems():
-                        print "checking if entry in tealist"
-                        
-                        if len(self.tealist)>0:
-                            if key=='user':
-                                #print "checking key"
-                                #print "value[0]", value[0], "self.tealist", self.tealist
-                                #print "any(value[0] == x[0] for x in self.tealist)", any(value[0] == x[0] for x in self.tealist)
-                                if not any(value[0] == x[0] for x in self.tealist):
-                                    print "adding new entry to tealist:", [value[0], time.time()]
-                                    newEntry = [value[0],time.time()]
-                                    self.tealist.append(newEntry)
-                                    self.wfile.write("Still Tea for " + str(newEntry));
-                                else:                                    
-                                    #print "modifying entry in tealist:", [value[0], time.time()]
-                                    for entry in self.tealist:
-                                        if key=='user'and entry[0] == value[0]:
-                                            entry[1] = time.time()
-                        else:
-                            print "adding new entry to tealist:", [value[0], time.time()]
-                            newEntry = [value[0],time.time()]
-                            self.tealist.append(newEntry)
-                            self.wfile.write("Tea for " + str(newEntry));
-                    
-                    #print "sending response to tea wish"
-
-                if makeTeaNow:
-                    self.wfile.write("time for tea!");
-                else:
-                    self.wfile.write("tea father?");
-
-                self.send_response(200)
-            
-            return
-            
-        #except :
-            #pass
 
 #Parameters
 MIN_WORK_TIME = 60 * 10 # min work time in seconds
@@ -265,7 +88,6 @@ class MrsDoyle:
         button.show()
         self.window.add(button)
         self.window.show()
-
         
     def format_time(self,seconds):
         minutes = floor(seconds / 60)
@@ -278,7 +100,6 @@ class MrsDoyle:
 
         self.state=state
         self.icon.set_from_file(self.icon_directory()+state+".png")
-        #self.icon.set_tooltip("tea?") #% self.format_time(delta))
 
         if state == "serveroff":
             print "Where's mrs doyle?"
@@ -289,7 +110,6 @@ class MrsDoyle:
         if state == "wanttea":
             print "I want tea!"
             
-
     def on_delete_event(self, widget, event):
         self.hide()
         return True    
@@ -320,9 +140,7 @@ class MrsDoyle:
 
     def contactserver(self,wanttea=True):
 
-	 	import cStringIO
 	 	buf = cStringIO.StringIO()
-	 	
                 self.wantTea = wanttea
 
 	    	try:
@@ -358,7 +176,6 @@ class MrsDoyle:
 
 		buf.close()
 
-
     def isMrsDoyle(self): #run the server!
 	try:
 		server = HTTPServer(('', 9999), MyHandler)
@@ -389,25 +206,15 @@ class MrsDoyle:
         source_id = gobject.timeout_add(self.tick_interval*250, self.update)
 
     def main(self):
-        # All PyGTK applications must have a gtk.main(). Control ends here
-        # and waits for an event to occur (like a key press or mouse event).
         source_id = gobject.timeout_add(self.tick_interval, self.update)
         gtk.main()
 
-
-
-# If the program is run directly or passed as an argument to the python
-# interpreter then create a Pomodoro instance and show it
 if __name__ == "__main__":
 
-	parser = argparse.ArgumentParser(description='Process some integers.')
+	parser = argparse.ArgumentParser(description='Process some args.')
 	parser.add_argument('--user', dest="username", help='persons name')
-	#parser.add_argument('--machinename', dest="client", help='client name in dns')	
 	parser.add_argument('--teamaker', dest="host", help='server name in dns')	
-
 	args = parser.parse_args()
-	print args
-
 	app = MrsDoyle(args)
 	app.main()
 
